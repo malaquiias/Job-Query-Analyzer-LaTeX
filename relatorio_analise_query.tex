@@ -1,0 +1,172 @@
+\documentclass{article}%
+\usepackage[T1]{fontenc}%
+\usepackage[utf8]{inputenc}%
+\usepackage{lmodern}%
+\usepackage{textcomp}%
+\usepackage{lastpage}%
+%
+\usepackage[portuguese]{babel}%
+\usepackage[a4paper,margin=1in]{geometry}%
+\usepackage{lmodern}%
+\usepackage{verbatim}%
+\usepackage{hyperref}%
+\title{Relatório de Análise de Query {-} Vagas SP vs. Remoto}%
+\author{Análise de Álgebra Linear com TF{-}IDF}%
+%
+\begin{document}%
+\normalsize%
+\maketitle%
+\section{Descrição do Dataset}%
+\label{sec:DescriodoDataset}%
+A análise foi realizada utilizando um conjunto de dados público da plataforma Kaggle.\newline%
+%
+\\%
+\textbf{Arquivo:}%
+ engenheiro\_de\_dados\_6k.csv 
+%
+\\%
+\textbf{Conteúdo:}%
+ O dataset contém 1.614 vagas para a posição de Engenheiro de Dados (Data Engineer) no Brasil (LinkedIn, 2023). Para esta análise, os 'documentos' são os textos da coluna 'job\_description'.
+
+%
+\section{Metodologia da Análise}%
+\label{sec:MetodologiadaAnlise}%
+O objetivo deste trabalho é comparar a aderência de dois mercados de trabalho (São Paulo e Remoto) a um perfil de vaga ideal, definido pelo usuário (a 'query').%
+\par%
+\subsection{Definição da Query e Documentos}%
+\label{subsec:DefiniodaQueryeDocumentos}%
+\textbf{A Query (Perfil Ideal):\newline%
+}%
+\\%
+O usuário forneceu o seguinte texto em inglês descrevendo seu perfil ideal:\newline%
+%
+\begin{it}%
+data engenieer with experience in python and sql%
+\end{it}%
+\\ \par%
+\textbf{Os Documentos (Os Grupos):\newline%
+}%
+\\%
+Os documentos da base foram divididos em dois grupos:\newline%
+%
+\\%
+{-} \textbackslash{}textbf\{Grupo 1 (São Paulo):\} 756 documentos.\newline%
+%
+\\%
+{-} \textbackslash{}textbf\{Grupo 2 (Remotas):\} 180 documentos.\newline%
+
+%
+\subsection{Processamento (Álgebra Linear)}%
+\label{subsec:Processamento(lgebraLinear)}%
+1. %
+\textbf{TF{-}IDF:}%
+ A Query e todos os Documentos de um grupo são transformados em vetores numéricos que representam a importância de cada palavra{-}chave.\newline%
+%
+\\%
+2. %
+\textbf{Similaridade de Cosseno (Análise de Ângulos):}%
+ É calculada a similaridade (cosseno do ângulo) entre o vetor da Query e *cada um* dos vetores de documentos do grupo. Um ângulo de 0° (cosseno = 1) significa que a vaga é idêntica à query.
+
+%
+\section{Resultados da Análise Comparativa}%
+\label{sec:ResultadosdaAnliseComparativa}%
+A seguir, são apresentados os 3 documentos mais similares (menor ângulo) à Query, separados por cada grupo.%
+\subsection{Top 3 {-} Vagas em São Paulo}%
+\label{subsec:Top3{-}VagasemSoPaulo}%
+\textbf{Rank 1 (ID do Documento no CSV: 1216):}%
+\\%
+   \textbackslash{}textbf\{Similaridade (S):\} 0.3576%
+ | %
+\textbackslash{}textbf\{Ângulo (Graus):\} 69.05°\newline%
+%
+\\ \par%
+\textbf{   Trecho do Documento:\newline%
+}%
+\\ \begin{it}%
+Na Turing ajudamos desenvolvedores a construírem a carreira de seus sonhos e encontrar as melhores vagas de trabalho online com salário em dólar em empresas de tecnologia dos EUA. Mais de 400 empresas incluindo Johnson \& Johnson Dell Disney Volvo etc. já contrataram desenvolvedores com a Turing. A U.S.-based organization that is committed to offering excellent healthcare research and me...%
+\end{it} \par%
+\textbf{Rank 2 (ID do Documento no CSV: 409):}%
+\\%
+   \textbackslash{}textbf\{Similaridade (S):\} 0.3576%
+ | %
+\textbackslash{}textbf\{Ângulo (Graus):\} 69.05°\newline%
+%
+\\ \par%
+\textbf{   Trecho do Documento:\newline%
+}%
+\\ \begin{it}%
+Na Turing ajudamos desenvolvedores a construírem a carreira de seus sonhos e encontrar as melhores vagas de trabalho online com salário em dólar em empresas de tecnologia dos EUA. Mais de 400 empresas incluindo Johnson \& Johnson Dell Disney Volvo etc. já contrataram desenvolvedores com a Turing. A U.S.-based organization that is committed to offering excellent healthcare research and me...%
+\end{it} \par%
+\textbf{Rank 3 (ID do Documento no CSV: 266):}%
+\\%
+   \textbackslash{}textbf\{Similaridade (S):\} 0.2430%
+ | %
+\textbackslash{}textbf\{Ângulo (Graus):\} 75.94°\newline%
+%
+\\ \par%
+\textbf{   Trecho do Documento:\newline%
+}%
+\\ \begin{it}%
+Área De Atuação Informática / TI / TecnologiaLocalização: Diferencial São Paulo-SPAtribuições: Certificação Azure Fundamentals 900 Certificação Azure Data EngineerQue Iremos Avaliar Experiência com desenvolvimento de Data Lakes em Cloud; Conhecimento de plataformas Big Data em ambiente de nuvem e banco de dados tradicionais (e.g. Azure Cosmos DB); Experiência Azure Data Lake Storage; Azure Data...%
+\end{it} \par
+
+%
+\subsection{Top 3 {-} Vagas Remotas}%
+\label{subsec:Top3{-}VagasRemotas}%
+\textbf{Rank 1 (ID do Documento no CSV: 311):}%
+\\%
+   \textbackslash{}textbf\{Similaridade (S):\} 0.3032%
+ | %
+\textbackslash{}textbf\{Ângulo (Graus):\} 72.35°\newline%
+%
+\\ \par%
+\textbf{   Trecho do Documento:\newline%
+}%
+\\ \begin{it}%
+Na Turing ajudamos desenvolvedores a construírem a carreira de seus sonhos e encontrar as melhores vagas de trabalho online com salário em dólar em empresas de tecnologia dos EUA. Mais de 400 empresas incluindo Johnson \& Johnson Dell Disney Volvo etc. já contrataram desenvolvedores com a Turing. A U.S.-based organization that is committed to offering excellent healthcare research and me...%
+\end{it} \par%
+\textbf{Rank 2 (ID do Documento no CSV: 447):}%
+\\%
+   \textbackslash{}textbf\{Similaridade (S):\} 0.3032%
+ | %
+\textbackslash{}textbf\{Ângulo (Graus):\} 72.35°\newline%
+%
+\\ \par%
+\textbf{   Trecho do Documento:\newline%
+}%
+\\ \begin{it}%
+Na Turing ajudamos desenvolvedores a construírem a carreira de seus sonhos e encontrar as melhores vagas de trabalho online com salário em dólar em empresas de tecnologia dos EUA. Mais de 400 empresas incluindo Johnson \& Johnson Dell Disney Volvo etc. já contrataram desenvolvedores com a Turing. A U.S.-based organization that is committed to offering excellent healthcare research and me...%
+\end{it} \par%
+\textbf{Rank 3 (ID do Documento no CSV: 409):}%
+\\%
+   \textbackslash{}textbf\{Similaridade (S):\} 0.3032%
+ | %
+\textbackslash{}textbf\{Ângulo (Graus):\} 72.35°\newline%
+%
+\\ \par%
+\textbf{   Trecho do Documento:\newline%
+}%
+\\ \begin{it}%
+Na Turing ajudamos desenvolvedores a construírem a carreira de seus sonhos e encontrar as melhores vagas de trabalho online com salário em dólar em empresas de tecnologia dos EUA. Mais de 400 empresas incluindo Johnson \& Johnson Dell Disney Volvo etc. já contrataram desenvolvedores com a Turing. A U.S.-based organization that is committed to offering excellent healthcare research and me...%
+\end{it} \par
+
+%
+\section{Discussão dos Resultados}%
+\label{sec:DiscussodosResultados}%
+\textbf{A Descoberta: }%
+A análise da query revelou um 'cluster' (agrupamento) de vagas dominado pela empresa Turing, tanto no mercado de SP quanto no Remoto.%
+\par%
+\textbf{A Causa: }%
+Isso é evidenciado pelos scores de similaridade e ângulos idênticos (ex: 0.3032 / 72.35%
+°%
+), provando que múltiplas vagas (Ranks 45, 60, 55) são, na verdade, cópias exatas do mesmo documento de texto.%
+\par%
+\textbf{A Implicação (Ruído nos Dados): }%
+Isso também expõe um 'ruído' nos dados: o uso de texto 'boilerplate' (o parágrafo de introdução da Turing) faz com que essas vagas pareçam muito similares entre si e dominem o topo do ranking.%
+\par%
+\textbf{A Prova: }%
+O algoritmo, no entanto, funciona como esperado. Outros resultados, como a vaga de 'Azure Data Engineer' (score 0.2430), provam que o sistema está corretamente ranqueando os documentos, mas que as vagas da Turing são matematicamente mais similares à query.%
+\par
+
+%
+\end{document}
