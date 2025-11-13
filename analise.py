@@ -8,20 +8,18 @@ import os
 import re
 import sys 
 
-# --- 1. CONFIGURAÇÕES E LEITURA ---
 
-# Defina o caminho para a sua pasta do projeto
 CAMINHO_PASTA = r"C:\Users\Gamer\Documents\fatec\algebra"
-# O nome do seu arquivo .csv
+
 NOME_ARQUIVO_CSV_INPUT = 'engenheiro_de_dados_6k.csv'
-# O nome que os seus arquivos de saída (.pdf e .tex) terão
+
 NOME_ARQUIVO_SAIDA = 'relatorio_analise_query' 
 
-# Junta os caminhos para ter os nomes completos
+
 caminho_csv = os.path.join(CAMINHO_PASTA, NOME_ARQUIVO_CSV_INPUT)
 caminho_saida = os.path.join(CAMINHO_PASTA, NOME_ARQUIVO_SAIDA)
 
-# --- Configurações da análise (não mude) ---
+
 COLUNA_TEXTO = 'job_description'
 COLUNA_LOCAL = 'formatted_location'
 ENCODING_ARQUIVO = 'utf-8' 
@@ -50,7 +48,7 @@ def carregar_e_filtrar_dados(caminho_csv):
     df = df.dropna(subset=[COLUNA_TEXTO])
     print(f"Total de vagas com descrição: {len(df)}")
 
-    # --- Filtrando os dois grupos ---
+  
     df_sp = df[df[COLUNA_LOCAL].str.contains('São Paulo', case=False, na=False)]
     
     if 'work_remote_allowed' in df.columns:
@@ -71,10 +69,7 @@ def carregar_e_filtrar_dados(caminho_csv):
 
 
 def analisar_query_vs_grupo(query_text, df_grupo):
-    """
-    Compara uma query (1) contra um grupo de documentos (N)
-    e retorna o Top 3.
-    """
+   
     print(f"Analisando query contra {len(df_grupo)} documentos...")
 
     lista_documentos = df_grupo[COLUNA_TEXTO].tolist()
@@ -101,7 +96,7 @@ def analisar_query_vs_grupo(query_text, df_grupo):
         'Angulo (Graus)': angulos_deg
     })
 
-    # Salva o Rank original (índice do dataframe) para exibir no relatório
+
     resultados_df['Rank_Original'] = df_grupo.index
     
     top_3 = resultados_df.sort_values(by='Similaridade (S)', ascending=False).head(3)
@@ -109,9 +104,7 @@ def analisar_query_vs_grupo(query_text, df_grupo):
 
 
 def limpar_texto_latex(texto):
-    """
-    Limpa uma string para ser segura para inclusão no LaTeX.
-    """
+   
     if not isinstance(texto, str):
         return ""
     texto = texto.replace('\ufffd', '?')
@@ -129,9 +122,7 @@ def limpar_texto_latex(texto):
     return texto
 
 def gerar_relatorio_latex(query_text, top_sp, top_remote, contagens, caminho_saida_pdf, nome_csv):
-    """
-    Gera o PDF com a nova análise de Query vs. Grupos.
-    """
+  
     print("Iniciando geração do PDF via LaTeX...")
     
     doc = Document(caminho_saida_pdf, documentclass='article',
@@ -147,7 +138,7 @@ def gerar_relatorio_latex(query_text, top_sp, top_remote, contagens, caminho_sai
     doc.preamble.append(Command('author', 'Análise de Álgebra Linear com TF-IDF'))
     doc.append(Command('maketitle'))
 
-    # --- SEÇÃO: DESCRIÇÃO DO DATASET ---
+   
     with doc.create(Section('Descrição do Dataset')):
         doc.append("A análise foi realizada utilizando um conjunto de dados público da plataforma Kaggle.\n")
         doc.append(NoEscape(r"\\"))
@@ -158,7 +149,7 @@ def gerar_relatorio_latex(query_text, top_sp, top_remote, contagens, caminho_sai
         doc.append(" O dataset contém 1.614 vagas para a posição de Engenheiro de Dados (Data Engineer) no Brasil (LinkedIn, 2023). "
                    "Para esta análise, os 'documentos' são os textos da coluna 'job_description'.")
 
-    # --- SEÇÃO: METODOLOGIA ---
+    
     with doc.create(Section('Metodologia da Análise')):
         total_sp, total_remote = contagens
         doc.append("O objetivo deste trabalho é comparar a aderência de dois mercados de trabalho (São Paulo e Remoto) "
@@ -192,7 +183,7 @@ def gerar_relatorio_latex(query_text, top_sp, top_remote, contagens, caminho_sai
             doc.append(" É calculada a similaridade (cosseno do ângulo) entre o vetor da Query e *cada um* dos vetores de documentos do grupo. "
                        "Um ângulo de 0° (cosseno = 1) significa que a vaga é idêntica à query.")
 
-    # --- SEÇÃO: RESULTADOS ---
+ 
     with doc.create(Section('Resultados da Análise Comparativa')):
         doc.append("A seguir, são apresentados os 3 documentos mais similares (menor ângulo) à Query, "
                    "separados por cada grupo.")
@@ -229,8 +220,7 @@ def gerar_relatorio_latex(query_text, top_sp, top_remote, contagens, caminho_sai
                     doc.append(NoEscape(limpar_texto_latex(row['Descricao'][:400]) + "..."))
                     doc.append(NoEscape(r"\end{it} \par"))
 
-    # --- SEÇÃO DE DISCUSSÃO ---
-    # Lembre-se de atualizar este texto se a sua query mudar!
+
     with doc.create(Section('Discussão dos Resultados')):
         doc.append(bold("A Descoberta: "))
         doc.append("A análise da query revelou um 'cluster' (agrupamento) de vagas dominado pela empresa Turing, tanto no mercado de SP quanto no Remoto.")
@@ -251,12 +241,9 @@ def gerar_relatorio_latex(query_text, top_sp, top_remote, contagens, caminho_sai
                    "provam que o sistema está corretamente ranqueando os documentos, mas que as vagas da Turing são matematicamente mais similares à query.")
         doc.append(NoEscape(r"\par"))
 
-    # Gera o PDF
+ 
     try:
-        # ======================================================
-        # --- AQUI ESTÁ A MÁGICA: clean_tex=False ---
-        # ======================================================
-        # Isso gera o PDF e NÃO apaga o .tex
+       
         doc.generate_pdf(caminho_saida_pdf, clean_tex=False, compiler='pdflatex') 
         
         print(f"\nSUCESSO! PDF '{caminho_saida_pdf}.pdf' gerado na pasta.")
@@ -264,9 +251,9 @@ def gerar_relatorio_latex(query_text, top_sp, top_remote, contagens, caminho_sai
         
     except Exception as e:
         print(f"\nERRO AO GERAR O PDF. Verifique se o MiKTeX está instalado.")
-        # Se a geração do PDF falhar, pelo menos tentamos salvar o .tex
+    
         try:
-            doc.generate_tex(caminho_saida_pdf) # Tenta salvar o .tex
+            doc.generate_tex(caminho_saida_pdf)
             print(f"O arquivo '{caminho_saida_pdf}.tex' foi gerado com sucesso (mas o PDF falhou).")
             print("Você pode compilá-lo manualmente com seu editor de LaTeX (Texworks).")
         except Exception as e_tex:
@@ -274,7 +261,7 @@ def gerar_relatorio_latex(query_text, top_sp, top_remote, contagens, caminho_sai
             
         print(f"Erro original do compilador: {str(e).splitlines()[0]}") 
 
-# --- SCRIPT PRINCIPAL ---
+
 if __name__ == "__main__":
     df_sp, df_remote = carregar_e_filtrar_dados(caminho_csv)
     
