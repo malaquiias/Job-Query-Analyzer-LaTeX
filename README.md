@@ -81,7 +81,7 @@ Uma descoberta chave da análise (detalhada no relatório gerado, para a query d
 
 > **A Descoberta:** A análise da query revelou um 'cluster' (agrupamento) de vagas dominado pela empresa Turing, tanto no mercado de SP quanto no Remoto: 5 dos 6 primeiros resultados são vagas da Turing.
 >
-> **A Causa:** Isso é evidenciado pelos scores de similaridade e ângulos idênticos (ex: 0.2691 / 74.39° nos documentos 1216 e 409 de SP, e 0.2383 / 76.21° nos documentos 1251 e 444 Remotos), provando que múltiplas vagas são, na verdade, cópias exatas do mesmo documento de texto.
+> **A Causa:** Isso é evidenciado pelos scores de similaridade e ângulos idênticos (ex: 0.2691 / 74.39° nos documentos 1216 e 409 de SP, e 0.2383 / 76.22° nos documentos 1251 e 444 Remotos), provando que múltiplas vagas são, na verdade, cópias exatas do mesmo documento de texto.
 >
 > **A Implicação (Ruído nos Dados):** Isso também expõe um 'ruído' nos dados: o uso de texto 'boilerplate' (o parágrafo de introdução da Turing) faz com que essas vagas pareçam muito similares entre si e dominem o topo do ranking.
 >
