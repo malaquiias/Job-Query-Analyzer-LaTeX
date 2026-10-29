@@ -9,7 +9,7 @@ import re
 import sys 
 
 
-CAMINHO_PASTA = r"C:\Users\Gamer\Documents\fatec\algebra"
+CAMINHO_PASTA = os.path.dirname(os.path.abspath(__file__))
 
 NOME_ARQUIVO_CSV_INPUT = 'engenheiro_de_dados_6k.csv'
 
@@ -227,9 +227,11 @@ def gerar_relatorio_latex(query_text, top_sp, top_remote, contagens, caminho_sai
         doc.append(NoEscape(r"\par")) 
 
         doc.append(bold("A Causa: "))
-        doc.append("Isso é evidenciado pelos scores de similaridade e ângulos idênticos (ex: 0.3032 / 72.35")
-        doc.append(NoEscape(r"°")) 
-        doc.append("), provando que múltiplas vagas (Ranks 45, 60, 55) são, na verdade, cópias exatas do mesmo documento de texto.")
+        doc.append("Isso é evidenciado pelos scores de similaridade e ângulos idênticos (ex: 0.2691 / 74.39")
+        doc.append(NoEscape(r"°"))
+        doc.append(" nos documentos 1216 e 409 de SP, e 0.2383 / 76.21")
+        doc.append(NoEscape(r"°"))
+        doc.append(" nos documentos 1251 e 444 Remotos), provando que múltiplas vagas são, na verdade, cópias exatas do mesmo documento de texto.")
         doc.append(NoEscape(r"\par"))
 
         doc.append(bold("A Implicação (Ruído nos Dados): "))
@@ -237,7 +239,7 @@ def gerar_relatorio_latex(query_text, top_sp, top_remote, contagens, caminho_sai
         doc.append(NoEscape(r"\par"))
 
         doc.append(bold("A Prova: ")) 
-        doc.append("O algoritmo, no entanto, funciona como esperado. Outros resultados, como a vaga de 'Azure Data Engineer' (score 0.2430), "
+        doc.append("O algoritmo, no entanto, funciona como esperado. Outros resultados, como a vaga de 'Engenheiro de Dados Sênior' fora da Turing (documento 266, score 0.1828), "
                    "provam que o sistema está corretamente ranqueando os documentos, mas que as vagas da Turing são matematicamente mais similares à query.")
         doc.append(NoEscape(r"\par"))
 

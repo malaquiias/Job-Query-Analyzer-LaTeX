@@ -12,15 +12,12 @@ Este projeto foi desenvolvido como trabalho para a disciplina de **Álgebra Line
 
 ## 📖 Índice
 
-  * [🎯 Sobre o Projeto](https://www.google.com/search?q=%23-sobre-o-projeto)
-  * [🛠️ Tecnologias Utilizadas](https://www.google.com/search?q=%23-tecnologias-utilizadas)
-  * [✨ Funcionalidades](https://www.google.com/search?q=%23-funcionalidades)
-  * [🔬 Metodologia (Como Funciona)](https://www.google.com/search?q=%23-metodologia-como-funciona)
-  * [🏁 Começando (Instalação e Uso)](https://www.google.com/search?q=%23-come%C3%A7ando-instala%C3%A7%C3%A3o-e-uso)
-      * [Pré-requisitos](https://www.google.com/search?q=%23pr%C3%A9-requisitos)
-      * [Instalação](https://www.google.com/search?q=%23instala%C3%A7%C3%A3o)
-      * [Executando](https://www.google.com/search?q=%23executando)
-  * [📈 Análise e Descobertas](https://www.google.com/search?q=%23-an%C3%A1lise-e-descobertas)
+  * [🎯 Sobre o Projeto](#-sobre-o-projeto)
+  * [🛠️ Tecnologias Utilizadas](#️-tecnologias-utilizadas)
+  * [✨ Funcionalidades](#-funcionalidades)
+  * [🔬 Metodologia (Como Funciona)](#-metodologia-como-funciona)
+  * [🏁 Como Executar](#-como-executar)
+  * [📈 Análise e Descobertas](#-análise-e-descobertas)
 
 -----
 
@@ -63,14 +60,29 @@ O fluxo de análise do script segue 5 etapas principais:
 5.  **Calcular Similaridade (Ângulos):** O script extrai o vetor da query (índice 0 da matriz) e os vetores das vagas (índice 1 em diante). A `cosine_similarity` é usada para calcular o cosseno do ângulo entre a query e cada vaga.
 6.  **Gerar Relatório:** Os resultados do Top 3 de cada grupo, junto com os metadados da análise (contagem de vagas, a query, etc.), são passados para a biblioteca `PyLaTeX`, que escreve o arquivo `.tex` e chama o compilador `pdflatex` (do MiKTeX) para gerar o `.pdf` final.
 
+## 🏁 Como Executar
+
+Pré-requisitos: Python 3.9+ e uma distribuição LaTeX com `pdflatex` (MiKTeX ou TeX Live).
+
+```bash
+pip install pandas numpy scikit-learn pylatex
+python analise.py
+```
+
+O script procura o `engenheiro_de_dados_6k.csv` na mesma pasta dele e pede a query no terminal. Exemplo usado no relatório:
+
+```
+data engineer with experience in python and sql
+```
+
 ## 📈 Análise e Descobertas
 
-Uma descoberta chave da análise (detalhada no relatório gerado) foi a identificação de um "ruído" significativo nos dados:
+Uma descoberta chave da análise (detalhada no relatório gerado, para a query de exemplo acima) foi a identificação de um "ruído" significativo nos dados:
 
-> **A Descoberta:** A análise da query revelou um 'cluster' (agrupamento) de vagas dominado pela empresa Turing, tanto no mercado de SP quanto no Remoto.
+> **A Descoberta:** A análise da query revelou um 'cluster' (agrupamento) de vagas dominado pela empresa Turing, tanto no mercado de SP quanto no Remoto: 5 dos 6 primeiros resultados são vagas da Turing.
 >
-> **A Causa:** Isso é evidenciado pelos scores de similaridade e ângulos idênticos (ex: 0.3032 / 72.35°), provando que múltiplas vagas (Ranks 45, 60, 55) são, na verdade, cópias exatas do mesmo documento de texto.
+> **A Causa:** Isso é evidenciado pelos scores de similaridade e ângulos idênticos (ex: 0.2691 / 74.39° nos documentos 1216 e 409 de SP, e 0.2383 / 76.21° nos documentos 1251 e 444 Remotos), provando que múltiplas vagas são, na verdade, cópias exatas do mesmo documento de texto.
 >
 > **A Implicação (Ruído nos Dados):** Isso também expõe um 'ruído' nos dados: o uso de texto 'boilerplate' (o parágrafo de introdução da Turing) faz com que essas vagas pareçam muito similares entre si e dominem o topo do ranking.
 >
-> **A Prova:** O algoritmo, no entanto, funciona como esperado. Outros resultados, como a vaga de 'Azure Data Engineer' (score 0.2430), provam que o sistema está corretamente ranqueando os documentos.
+> **A Prova:** O algoritmo, no entanto, funciona como esperado. Outros resultados, como a vaga de 'Engenheiro de Dados Sênior' fora da Turing (documento 266, score 0.1828), provam que o sistema está corretamente ranqueando os documentos.
