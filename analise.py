@@ -1,303 +1,247 @@
-import pandas as pd
-import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-from pylatex import Document, Section, Subsection, Command, NoEscape
-from pylatex.utils import bold
+"""Compara uma query (perfil de vaga ideal) com vagas de Engenheiro de Dados.
+
+Usa TF-IDF e similaridade de cosseno para ranquear as vagas de dois grupos
+(São Paulo e Remotas) e gera um relatório em LaTeX/PDF com os resultados.
+
+Uso:
+    python analise.py                       # pede a query no terminal
+    python analise.py --query "data engineer with python and sql"
+"""
+
+import argparse
 import os
 import re
-import sys 
+import sys
 
+import numpy as np
+import pandas as pd
+from pylatex import Command, Document, NoEscape, Section, Subsection
+from pylatex.utils import bold
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 CAMINHO_PASTA = os.path.dirname(os.path.abspath(__file__))
+NOME_ARQUIVO_CSV_INPUT = "engenheiro_de_dados_6k.csv"
+NOME_ARQUIVO_SAIDA = "relatorio_analise_query"
 
-NOME_ARQUIVO_CSV_INPUT = 'engenheiro_de_dados_6k.csv'
-
-NOME_ARQUIVO_SAIDA = 'relatorio_analise_query' 
-
-
-caminho_csv = os.path.join(CAMINHO_PASTA, NOME_ARQUIVO_CSV_INPUT)
-caminho_saida = os.path.join(CAMINHO_PASTA, NOME_ARQUIVO_SAIDA)
+COLUNA_TEXTO = "job_description"
+COLUNA_LOCAL = "formatted_location"
+TOP_K = 3
+K_RUIDO = 10  # quantas posições do topo olhar para medir o efeito das cópias
 
 
-COLUNA_TEXTO = 'job_description'
-COLUNA_LOCAL = 'formatted_location'
-ENCODING_ARQUIVO = 'utf-8' 
-ENCODING_ERRORS = 'replace'
+def carregar_dados(caminho_csv):
+    """Lê o CSV e remove as vagas sem descrição."""
+    df = pd.read_csv(caminho_csv, encoding="utf-8", encoding_errors="replace")
+    faltando = {COLUNA_TEXTO, COLUNA_LOCAL} - set(df.columns)
+    if faltando:
+        raise ValueError(f"colunas não encontradas no CSV: {sorted(faltando)}")
+    return df.dropna(subset=[COLUNA_TEXTO])
 
-def carregar_e_filtrar_dados(caminho_csv):
+
+def remover_duplicatas(df):
+    """Remove linhas repetidas em duas etapas e devolve o DataFrame limpo e as contagens.
+
+    1. Mesmo ``job_id``: a mesma vaga extraída mais de uma vez.
+    2. Mesma descrição: vagas diferentes publicadas com o texto idêntico
+       (ex.: uma empresa que repete o anúncio em várias cidades).
     """
-    Lê o CSV e cria dois DataFrames: um para SP e um Remoto.
-    """
-    try:
-        df = pd.read_csv(caminho_csv, 
-                         encoding=ENCODING_ARQUIVO, 
-                         encoding_errors=ENCODING_ERRORS)
-        print(f"Arquivo CSV '{caminho_csv}' carregado com sucesso.")
-    except FileNotFoundError:
-        print(f"ERRO: Arquivo '{caminho_csv}' não encontrado.")
-        return None, None
-    except Exception as e:
-        print(f"Erro ao ler o CSV: {e}")
-        return None, None
+    contagens = {"total": len(df)}
+    if "job_id" in df.columns:
+        df = df.drop_duplicates(subset="job_id")
+    contagens["sem_id_repetido"] = len(df)
+    df = df.drop_duplicates(subset=COLUNA_TEXTO)
+    contagens["sem_texto_repetido"] = len(df)
+    return df, contagens
 
-    if COLUNA_TEXTO not in df.columns or COLUNA_LOCAL not in df.columns:
-        print("ERRO CRÍTICO: Colunas 'job_description' ou 'formatted_location' não encontradas.")
-        return None, None
-        
-    df = df.dropna(subset=[COLUNA_TEXTO])
-    print(f"Total de vagas com descrição: {len(df)}")
 
-  
-    df_sp = df[df[COLUNA_LOCAL].str.contains('São Paulo', case=False, na=False)]
-    
-    if 'work_remote_allowed' in df.columns:
-        df_remote = df[df['work_remote_allowed'] == True]
-        print("Usando a coluna 'work_remote_allowed' para filtrar vagas remotas.")
+def separar_grupos(df):
+    """Divide as vagas em São Paulo e Remotas."""
+    df_sp = df[df[COLUNA_LOCAL].str.contains("São Paulo", case=False, na=False)]
+    if "work_remote_allowed" in df.columns:
+        df_remote = df[df["work_remote_allowed"] == True]  # noqa: E712 (coluna pode ter NaN)
     else:
-        print("Usando a coluna 'formatted_location' para filtrar vagas remotas.")
-        df_remote = df[df[COLUNA_LOCAL].str.contains('Remoto|Remote', case=False, na=False)]
-
-    if df_sp.empty or df_remote.empty:
-        print("AVISO: Um dos grupos (SP ou Remoto) não encontrou vagas.")
-        print(f"Total de vagas SP: {len(df_sp)}")
-        print(f"Total de vagas Remotas: {len(df_remote)}")
-        return None, None
-
-    print(f"Dados filtrados: {len(df_sp)} vagas SP, {len(df_remote)} vagas Remotas.")
+        df_remote = df[df[COLUNA_LOCAL].str.contains("Remoto|Remote", case=False, na=False)]
     return df_sp, df_remote
 
 
-def analisar_query_vs_grupo(query_text, df_grupo):
-   
-    print(f"Analisando query contra {len(df_grupo)} documentos...")
+def ranquear(query_text, df_grupo, k=TOP_K):
+    """Devolve as ``k`` vagas do grupo mais similares à query.
 
-    lista_documentos = df_grupo[COLUNA_TEXTO].tolist()
-    corpus = [query_text] + lista_documentos
-    
-    vectorizer = TfidfVectorizer(stop_words='english', max_features=5000, min_df=2, norm='l2')
-    
-    try:
-        tfidf_matrix = vectorizer.fit_transform(corpus)
-    except ValueError:
-        print("ERRO: A query não contém palavras conhecidas pelo vocabulário. Tente um texto mais descritivo.")
-        return None
+    A query e as descrições do grupo formam um corpus; o TF-IDF é ajustado nesse
+    corpus e a similaridade de cosseno é calculada entre a query e cada vaga.
+    """
+    corpus = [query_text] + df_grupo[COLUNA_TEXTO].tolist()
+    vectorizer = TfidfVectorizer(stop_words="english", max_features=5000, min_df=2, norm="l2")
+    tfidf = vectorizer.fit_transform(corpus)
+    if tfidf[0].nnz == 0:
+        raise ValueError(
+            "nenhuma palavra da query está no vocabulário das vagas. "
+            "Tente um texto mais descritivo, em inglês."
+        )
 
-    vetor_q = tfidf_matrix[0]
-    vetores_d = tfidf_matrix[1:]
-
-    similaridades_array = cosine_similarity(vetor_q, vetores_d)[0]
-    S_clip = np.clip(similaridades_array, -1.0, 1.0)
-    angulos_deg = np.degrees(np.arccos(S_clip))
-
-    resultados_df = pd.DataFrame({
-        'Descricao': lista_documentos,
-        'Similaridade (S)': similaridades_array,
-        'Angulo (Graus)': angulos_deg
-    })
+    sim = cosine_similarity(tfidf[0], tfidf[1:])[0]
+    resultado = df_grupo.assign(
+        similaridade=sim,
+        angulo=np.degrees(np.arccos(np.clip(sim, -1.0, 1.0))),
+    )
+    return resultado.sort_values("similaridade", ascending=False).head(k)
 
 
-    resultados_df['Rank_Original'] = df_grupo.index
-    
-    top_3 = resultados_df.sort_values(by='Similaridade (S)', ascending=False).head(3)
-    return top_3
+def copias_no_topo(query_text, df_grupo_bruto, k=K_RUIDO):
+    """Quantas das ``k`` primeiras posições, sem limpar os dados, são cópias de outra."""
+    topo = ranquear(query_text, df_grupo_bruto, k)
+    return k - topo[COLUNA_TEXTO].nunique()
 
 
 def limpar_texto_latex(texto):
-   
+    """Escapa os caracteres especiais do LaTeX e junta espaços repetidos."""
     if not isinstance(texto, str):
         return ""
-    texto = texto.replace('\ufffd', '?')
-    texto = texto.replace('\\', r'\textbackslash{}')
-    texto = texto.replace('{', r'\{')
-    texto = texto.replace('}', r'\}')
-    texto = texto.replace('_', r'\_')
-    texto = texto.replace('^', r'\textasciicircum{}')
-    texto = texto.replace('~', r'\textasciitilde{}')
-    texto = texto.replace('%', r'\%')
-    texto = texto.replace('$', r'\$')
-    texto = texto.replace('#', r'\#')
-    texto = texto.replace('&', r'\&')
-    texto = re.sub(r'\s+', ' ', texto).strip()
-    return texto
-
-def gerar_relatorio_latex(query_text, top_sp, top_remote, contagens, caminho_saida_pdf, nome_csv):
-  
-    print("Iniciando geração do PDF via LaTeX...")
-    
-    doc = Document(caminho_saida_pdf, documentclass='article',
-                   fontenc='T1', inputenc='utf8')
-                   
-    doc.preamble.append(Command('usepackage', ['babel'], 'portuguese'))
-    doc.preamble.append(Command('usepackage', 'geometry', options=['a4paper', 'margin=1in']))
-    doc.preamble.append(Command('usepackage', 'lmodern'))
-    doc.preamble.append(Command('usepackage', 'verbatim'))
-    doc.preamble.append(Command('usepackage', 'hyperref'))
-
-    doc.preamble.append(Command('title', 'Relatório de Análise de Query - Vagas SP vs. Remoto'))
-    doc.preamble.append(Command('author', 'Análise de Álgebra Linear com TF-IDF'))
-    doc.append(Command('maketitle'))
-
-   
-    with doc.create(Section('Descrição do Dataset')):
-        doc.append("A análise foi realizada utilizando um conjunto de dados público da plataforma Kaggle.\n")
-        doc.append(NoEscape(r"\\"))
-        doc.append(bold("Arquivo:"))
-        doc.append(NoEscape(f" {nome_csv.replace('_', r'\_')} \n"))
-        doc.append(NoEscape(r"\\"))
-        doc.append(bold("Conteúdo:"))
-        doc.append(" O dataset contém 1.614 vagas para a posição de Engenheiro de Dados (Data Engineer) no Brasil (LinkedIn, 2023). "
-                   "Para esta análise, os 'documentos' são os textos da coluna 'job_description'.")
-
-    
-    with doc.create(Section('Metodologia da Análise')):
-        total_sp, total_remote = contagens
-        doc.append("O objetivo deste trabalho é comparar a aderência de dois mercados de trabalho (São Paulo e Remoto) "
-                   "a um perfil de vaga ideal, definido pelo usuário (a 'query').")
-        doc.append(NoEscape(r"\par"))
-
-        with doc.create(Subsection('Definição da Query e Documentos')):
-            doc.append(bold("A Query (Perfil Ideal):\n"))
-            doc.append(NoEscape(r"\\"))
-            doc.append("O usuário forneceu o seguinte texto em inglês descrevendo seu perfil ideal:\n")
-            doc.append(NoEscape(r"\begin{it}"))
-            doc.append(NoEscape(limpar_texto_latex(query_text))) 
-            doc.append(NoEscape(r"\end{it}"))
-            doc.append(NoEscape(r"\\ \par"))
-
-            doc.append(bold("Os Documentos (Os Grupos):\n"))
-            doc.append(NoEscape(r"\\"))
-            doc.append(f"Os documentos da base foram divididos em dois grupos:\n")
-            doc.append(NoEscape(r"\\"))
-            doc.append("- ")
-            doc.append(bold('Grupo 1 (São Paulo):'))
-            doc.append(f" {total_sp} documentos.\n")
-            doc.append(NoEscape(r"\\"))
-            doc.append("- ")
-            doc.append(bold('Grupo 2 (Remotas):'))
-            doc.append(f" {total_remote} documentos.\n")
-
-        with doc.create(Subsection('Processamento (Álgebra Linear)')):
-            doc.append("1. ")
-            doc.append(bold("TF-IDF:"))
-            doc.append(" A Query e todos os Documentos de um grupo são transformados em vetores numéricos que representam a importância de cada palavra-chave.\n")
-            doc.append(NoEscape(r"\\"))
-            doc.append("2. ")
-            doc.append(bold("Similaridade de Cosseno (Análise de Ângulos):"))
-            doc.append(" É calculada a similaridade (cosseno do ângulo) entre o vetor da Query e *cada um* dos vetores de documentos do grupo. "
-                       "Um ângulo de 0° (cosseno = 1) significa que a vaga é idêntica à query.")
-
- 
-    with doc.create(Section('Resultados da Análise Comparativa')):
-        doc.append("A seguir, são apresentados os 3 documentos mais similares (menor ângulo) à Query, "
-                   "separados por cada grupo.")
-
-        with doc.create(Subsection('Top 3 - Vagas em São Paulo')):
-            if top_sp is None or top_sp.empty:
-                doc.append("Nenhum resultado encontrado para este grupo.")
-            else:
-                for i, (_, row) in enumerate(top_sp.reset_index().iterrows()):
-                    doc.append(bold(f"Rank {i+1} (ID do Documento no CSV: {row['Rank_Original']}):"))
-                    doc.append(NoEscape(r"\\"))
-                    doc.append(bold('Similaridade (S):'))
-                    doc.append(f" {row['Similaridade (S)']:.4f}")
-                    doc.append(NoEscape(r" | "))
-                    doc.append(bold('Ângulo (Graus):'))
-                    doc.append(f" {row['Angulo (Graus)']:.2f}°\n")
-                    doc.append(NoEscape(r"\\ \par"))
-                    doc.append(bold("   Trecho do Documento:\n"))
-                    doc.append(NoEscape(r"\\ \begin{it}"))
-                    doc.append(NoEscape(limpar_texto_latex(row['Descricao'][:400]) + "..."))
-                    doc.append(NoEscape(r"\end{it} \par"))
-
-        with doc.create(Subsection('Top 3 - Vagas Remotas')):
-            if top_remote is None or top_remote.empty:
-                doc.append("Nenhum resultado encontrado para este grupo.")
-            else:
-                for i, (_, row) in enumerate(top_remote.reset_index().iterrows()):
-                    doc.append(bold(f"Rank {i+1} (ID do Documento no CSV: {row['Rank_Original']}):"))
-                    doc.append(NoEscape(r"\\"))
-                    doc.append(bold('Similaridade (S):'))
-                    doc.append(f" {row['Similaridade (S)']:.4f}")
-                    doc.append(NoEscape(r" | "))
-                    doc.append(bold('Ângulo (Graus):'))
-                    doc.append(f" {row['Angulo (Graus)']:.2f}°\n")
-                    doc.append(NoEscape(r"\\ \par"))
-                    doc.append(bold("   Trecho do Documento:\n"))
-                    doc.append(NoEscape(r"\\ \begin{it}"))
-                    doc.append(NoEscape(limpar_texto_latex(row['Descricao'][:400]) + "..."))
-                    doc.append(NoEscape(r"\end{it} \par"))
+    trocas = {
+        "\\": r"\textbackslash{}",
+        "{": r"\{",
+        "}": r"\}",
+        "_": r"\_",
+        "^": r"\textasciicircum{}",
+        "~": r"\textasciitilde{}",
+        "%": r"\%",
+        "$": r"\$",
+        "#": r"\#",
+        "&": r"\&",
+    }
+    texto = texto.replace("�", "?")
+    texto = "".join(trocas.get(c, c) for c in texto)
+    return re.sub(r"\s+", " ", texto).strip()
 
 
-    with doc.create(Section('Discussão dos Resultados')):
-        doc.append(bold("A Descoberta: "))
-        doc.append("A análise da query revelou um 'cluster' (agrupamento) de vagas dominado pela empresa Turing, tanto no mercado de SP quanto no Remoto.")
-        doc.append(NoEscape(r"\par")) 
+def escrever_top(doc, titulo, top):
+    """Escreve uma subseção com o top-k de um grupo."""
+    with doc.create(Subsection(titulo)):
+        for posicao, (indice, row) in enumerate(top.iterrows(), start=1):
+            cargo = limpar_texto_latex(row.get("title")) or "Cargo não informado"
+            empresa = limpar_texto_latex(row.get("company_name")) or "empresa não informada"
+            doc.append(NoEscape(rf"\textbf{{{posicao}. {cargo}}} ({empresa}, linha {indice} do CSV)\\"))
+            doc.append(NoEscape(
+                rf"Similaridade: {row['similaridade']:.4f} \quad "
+                rf"Ângulo: {row['angulo']:.2f}\textdegree\\"
+            ))
+            trecho = limpar_texto_latex(row[COLUNA_TEXTO][:400])
+            doc.append(NoEscape(rf"\textit{{{trecho}...}}\par\medskip"))
 
-        doc.append(bold("A Causa: "))
-        doc.append("Isso é evidenciado pelos scores de similaridade e ângulos idênticos (ex: 0.2691 / 74.39")
-        doc.append(NoEscape(r"°"))
-        doc.append(" nos documentos 1216 e 409 de SP, e 0.2383 / 76.22")
-        doc.append(NoEscape(r"°"))
-        doc.append(" nos documentos 1251 e 444 Remotos), provando que múltiplas vagas são, na verdade, cópias exatas do mesmo documento de texto.")
-        doc.append(NoEscape(r"\par"))
 
-        doc.append(bold("A Implicação (Ruído nos Dados): "))
-        doc.append("Isso também expõe um 'ruído' nos dados: o uso de texto 'boilerplate' (o parágrafo de introdução da Turing) faz com que essas vagas pareçam muito similares entre si e dominem o topo do ranking.")
-        doc.append(NoEscape(r"\par"))
+def gerar_relatorio(query_text, resultados, contagens, caminho_saida, nome_csv):
+    """Monta o documento LaTeX e tenta compilar o PDF."""
+    doc = Document(caminho_saida, documentclass="article", fontenc="T1", inputenc="utf8")
+    doc.preamble.append(Command("usepackage", "babel", options="portuguese"))
+    doc.preamble.append(Command("usepackage", "geometry", options=["a4paper", "margin=1in"]))
+    doc.preamble.append(Command("usepackage", "hyperref"))
+    doc.preamble.append(Command("title", "Relatório de Análise de Query - Vagas SP vs. Remoto"))
+    doc.preamble.append(Command("author", "Análise de Álgebra Linear com TF-IDF"))
+    doc.append(Command("maketitle"))
 
-        doc.append(bold("A Prova: ")) 
-        doc.append("O algoritmo, no entanto, funciona como esperado. Outros resultados, como a vaga de 'Engenheiro de Dados Sênior' fora da Turing (documento 266, score 0.1828), "
-                   "provam que o sistema está corretamente ranqueando os documentos, mas que as vagas da Turing são matematicamente mais similares à query.")
-        doc.append(NoEscape(r"\par"))
+    nome_csv_tex = limpar_texto_latex(nome_csv)
+    removidas_id = contagens["total"] - contagens["sem_id_repetido"]
+    removidas_texto = contagens["sem_id_repetido"] - contagens["sem_texto_repetido"]
 
- 
+    with doc.create(Section("Descrição do Dataset")):
+        doc.append(NoEscape(
+            rf"Dataset público do Kaggle com vagas de Engenheiro de Dados no Brasil "
+            rf"(LinkedIn, 2023), arquivo \texttt{{{nome_csv_tex}}}. "
+            rf"Os documentos são os textos da coluna \texttt{{job\_description}}.\par"
+        ))
+        with doc.create(Subsection("Limpeza: vagas duplicadas")):
+            doc.append(NoEscape(
+                rf"O arquivo tem {contagens['total']} linhas com descrição. "
+                rf"{removidas_id} são a mesma vaga (mesmo \texttt{{job\_id}}) extraída mais de uma vez, "
+                rf"e outras {removidas_texto} são vagas diferentes com o texto idêntico. "
+                rf"Depois de remover as duas, restam {contagens['sem_texto_repetido']} descrições únicas, "
+                rf"que são as usadas no ranking.\par"
+            ))
+
+    with doc.create(Section("Metodologia")):
+        doc.append(NoEscape(r"\textbf{Query (perfil ideal):} \textit{"
+                            + limpar_texto_latex(query_text) + r"}\par\medskip"))
+        doc.append(NoEscape(
+            rf"\textbf{{Grupos:}} São Paulo ({len(resultados['sp']['grupo'])} vagas) e "
+            rf"Remotas ({len(resultados['remoto']['grupo'])} vagas).\par\medskip"
+        ))
+        doc.append(NoEscape(
+            r"\textbf{TF-IDF:} a query e as vagas de cada grupo viram vetores com o peso de cada "
+            r"palavra. \textbf{Similaridade de cosseno:} mede o ângulo entre o vetor da query e o "
+            r"de cada vaga; ângulo de 0\textdegree{} (cosseno 1) seria um texto idêntico.\par"
+        ))
+
+    with doc.create(Section(f"Resultados: top {TOP_K} de cada grupo")):
+        escrever_top(doc, "Vagas em São Paulo", resultados["sp"]["top"])
+        escrever_top(doc, "Vagas Remotas", resultados["remoto"]["top"])
+
+    with doc.create(Section("Discussão")):
+        melhor_sp = resultados["sp"]["top"]["similaridade"].max()
+        melhor_rem = resultados["remoto"]["top"]["similaridade"].max()
+        grupo_melhor = "São Paulo" if melhor_sp >= melhor_rem else "Remotas"
+        doc.append(NoEscape(
+            rf"Para esta query, a vaga mais aderente está no grupo \textbf{{{grupo_melhor}}} "
+            rf"(similaridade {max(melhor_sp, melhor_rem):.4f}, contra "
+            rf"{min(melhor_sp, melhor_rem):.4f} no outro grupo).\par\medskip"
+        ))
+        doc.append(NoEscape(
+            rf"\textbf{{Efeito das duplicatas:}} sem a limpeza, das {K_RUIDO} primeiras posições "
+            rf"{resultados['sp']['copias']} seriam cópias de outra vaga em São Paulo e "
+            rf"{resultados['remoto']['copias']} nas Remotas. Cópias têm exatamente o mesmo score, "
+            r"então ocupam o topo do ranking sem trazer informação nova.\par"
+        ))
+
     try:
-       
-        doc.generate_pdf(caminho_saida_pdf, clean_tex=False, compiler='pdflatex') 
-        
-        print(f"\nSUCESSO! PDF '{caminho_saida_pdf}.pdf' gerado na pasta.")
-        print(f"O arquivo fonte '{caminho_saida_pdf}.tex' também foi salvo.")
-        
-    except Exception as e:
-        print(f"\nERRO AO GERAR O PDF. Verifique se o MiKTeX está instalado.")
-    
-        try:
-            doc.generate_tex(caminho_saida_pdf)
-            print(f"O arquivo '{caminho_saida_pdf}.tex' foi gerado com sucesso (mas o PDF falhou).")
-            print("Você pode compilá-lo manualmente com seu editor de LaTeX (Texworks).")
-        except Exception as e_tex:
-            print(f"Falha ao salvar o arquivo .tex: {e_tex}")
-            
-        print(f"Erro original do compilador: {str(e).splitlines()[0]}") 
+        doc.generate_pdf(caminho_saida, clean_tex=False, compiler="pdflatex")
+        print(f"\nPDF gerado: {caminho_saida}.pdf (fonte em {caminho_saida}.tex)")
+    except Exception as e:  # pdflatex ausente ou erro de compilação
+        doc.generate_tex(caminho_saida)
+        print(f"\nNão foi possível gerar o PDF ({str(e).splitlines()[0]}).")
+        print(f"O arquivo {caminho_saida}.tex foi salvo; compile com pdflatex.")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--query", help="perfil de vaga ideal, em inglês")
+    parser.add_argument("--csv", default=os.path.join(CAMINHO_PASTA, NOME_ARQUIVO_CSV_INPUT))
+    args = parser.parse_args()
+
+    df_bruto = carregar_dados(args.csv)
+    df, contagens = remover_duplicatas(df_bruto)
+    print(f"{contagens['total']} vagas no CSV -> {contagens['sem_texto_repetido']} descrições únicas.")
+
+    query_text = args.query
+    if not query_text:
+        print("Descreva a vaga de Engenheiro de Dados ideal, em inglês.")
+        print("Exemplo: data engineer with experience in python and sql")
+        query_text = input("Query: ")
+    if not query_text.strip():
+        sys.exit("ERRO: a query não pode ser vazia.")
+
+    resultados = {}
+    grupos_limpos = dict(zip(("sp", "remoto"), separar_grupos(df)))
+    grupos_brutos = dict(zip(("sp", "remoto"), separar_grupos(df_bruto)))
+    for nome, grupo in grupos_limpos.items():
+        if grupo.empty:
+            sys.exit(f"ERRO: o grupo '{nome}' não tem vagas.")
+        resultados[nome] = {
+            "grupo": grupo,
+            "top": ranquear(query_text, grupo),
+            "copias": copias_no_topo(query_text, grupos_brutos[nome]),
+        }
+
+    gerar_relatorio(
+        query_text,
+        resultados,
+        contagens,
+        os.path.join(CAMINHO_PASTA, NOME_ARQUIVO_SAIDA),
+        os.path.basename(args.csv),
+    )
 
 
 if __name__ == "__main__":
-    df_sp, df_remote = carregar_e_filtrar_dados(caminho_csv)
-    
-    if df_sp is not None and df_remote is not None:
-        
-        print("\n==============================================")
-        print(" 🚀 INÍCIO DA ANÁLISE DE VAGAS 🚀")
-        print("\n--- ETAPA 1: DEFINIÇÃO DO PERFIL (QUERY) ---")
-        print("Descreva o seu perfil ou a vaga de Engenheiro de Dados ideal (em inglês, para melhor resultado com as palavras-chave de TI).")
-        print("Exemplo: data engineer with experience in python, spark, sql and aws cloud services.")
-        
-        query_text = input("Query (English): ")
-
-        if not query_text.strip():
-            print("ERRO: O texto da Query não pode ser vazio.")
-            sys.exit()
-        
-        print("\n--- ETAPA 2: PROCESSANDO (TF-IDF E ÂNGULOS) ---")
-        
-        top_sp = analisar_query_vs_grupo(query_text, df_sp)
-        top_remote = analisar_query_vs_grupo(query_text, df_remote)
-
-        print("\n--- ETAPA 3: GERANDO RELATÓRIO PDF (LATEX) ---")
-        
-        contagens = (len(df_sp), len(df_remote))
-        gerar_relatorio_latex(query_text, top_sp, top_remote, contagens, caminho_saida, NOME_ARQUIVO_CSV_INPUT)
-    
-    else:
-        print("Script interrompido devido a falha no carregamento ou filtragem dos dados.")
+    try:
+        main()
+    except (FileNotFoundError, ValueError) as e:
+        sys.exit(f"ERRO: {e}")

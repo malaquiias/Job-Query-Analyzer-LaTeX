@@ -1,8 +1,8 @@
 # 🚀 Job Query Analyzer (com LaTeX)
 
-[](https://www.python.org/downloads/)
-[](https://scikit-learn.org/)
-[](https://www.latex-project.org/)
+![Python](https://img.shields.io/badge/python-3.9%2B-blue)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-TF--IDF-orange)
+![LaTeX](https://img.shields.io/badge/LaTeX-PyLaTeX-008080)
 
 Um script Python que analisa a similaridade de vagas de emprego usando TF-IDF e gera automaticamente um relatório formal em LaTeX.
 
@@ -41,48 +41,53 @@ O algoritmo calcula a similaridade entre a query do usuário e cada vaga nos doi
 
 ## ✨ Funcionalidades
 
-  * Carrega um grande dataset de vagas do Kaggle.
+  * Carrega o dataset de vagas do Kaggle (LinkedIn, 2023).
+  * **Remove vagas duplicadas** em duas etapas: mesma vaga extraída mais de uma vez (`job_id`) e vagas com texto idêntico.
   * Filtra os dados em dois grupos de análise (SP vs. Remoto).
-  * Solicita interativamente uma "query" (perfil de vaga) ao usuário via terminal.
-  * Aplica a vetorização TF-IDF para criar um espaço vetorial de palavras-chave.
-  * Calcula a Similaridade de Cosseno (o ângulo) entre a query e todos os documentos.
-  * Identifica os 3 documentos Top 3 mais similares em cada grupo.
-  * **Gera automaticamente um relatório `relatorio_analise_query.pdf` e o código-fonte `relatorio_analise_query.tex`** com os resultados e a análise.
+  * Recebe a "query" (perfil de vaga) pelo terminal ou pelo argumento `--query`.
+  * Aplica TF-IDF e calcula a similaridade de cosseno (e o ângulo) entre a query e cada vaga.
+  * Gera `relatorio_analise_query.pdf` e `.tex` com o top 3 de cada grupo e uma discussão **calculada a partir dos resultados** da query usada.
 
 ## 🔬 Metodologia (Como Funciona)
 
-O fluxo de análise do script segue 5 etapas principais:
-
-1.  **Carregar Dados:** O arquivo `engenheiro_de_dados_6k.csv` é lido com o Pandas.
-2.  **Filtrar Grupos:** O DataFrame é dividido em dois: `df_sp` (vagas contendo "São Paulo" na localização) e `df_remote` (vagas com `work_remote_allowed == True`).
-3.  **Obter Query:** O script pausa e pede ao usuário para digitar o perfil de vaga ideal.
-4.  **Vetorizar (TF-IDF):** Para cada grupo, um "corpus" (coleção de textos) é criado, contendo a *query* e as *descrições das vagas* daquele grupo. O `TfidfVectorizer` transforma esse corpus em uma matriz de vetores.
-5.  **Calcular Similaridade (Ângulos):** O script extrai o vetor da query (índice 0 da matriz) e os vetores das vagas (índice 1 em diante). A `cosine_similarity` é usada para calcular o cosseno do ângulo entre a query e cada vaga.
-6.  **Gerar Relatório:** Os resultados do Top 3 de cada grupo, junto com os metadados da análise (contagem de vagas, a query, etc.), são passados para a biblioteca `PyLaTeX`, que escreve o arquivo `.tex` e chama o compilador `pdflatex` (do MiKTeX) para gerar o `.pdf` final.
+1.  **Carregar e limpar:** lê `engenheiro_de_dados_6k.csv` e remove as duplicatas.
+2.  **Filtrar grupos:** `df_sp` (localização contém "São Paulo") e `df_remote` (`work_remote_allowed == True`).
+3.  **Vetorizar (TF-IDF):** para cada grupo, o corpus é a query + as descrições do grupo.
+4.  **Similaridade de cosseno:** compara o vetor da query (linha 0) com cada vaga e converte em ângulo (`arccos`).
+5.  **Medir o ruído:** roda o mesmo ranking nos dados sem limpeza e conta quantas das 10 primeiras posições seriam cópias.
+6.  **Gerar relatório:** monta o documento com `PyLaTeX` e compila com `pdflatex`.
 
 ## 🏁 Como Executar
 
-Pré-requisitos: Python 3.9+ e uma distribuição LaTeX com `pdflatex` (MiKTeX ou TeX Live).
+Pré-requisitos: Python 3.9+ e uma distribuição LaTeX com `pdflatex` (MiKTeX ou TeX Live). Sem LaTeX, o script salva só o `.tex`.
 
 ```bash
-pip install pandas numpy scikit-learn pylatex
-python analise.py
+pip install -r requirements.txt
+python analise.py --query "data engineer with experience in python and sql"
 ```
 
-O script procura o `engenheiro_de_dados_6k.csv` na mesma pasta dele e pede a query no terminal. Exemplo usado no relatório:
-
-```
-data engineer with experience in python and sql
-```
+Sem `--query`, o script pede o texto no terminal.
 
 ## 📈 Análise e Descobertas
 
-Uma descoberta chave da análise (detalhada no relatório gerado, para a query de exemplo acima) foi a identificação de um "ruído" significativo nos dados:
+**1. Mais da metade do dataset era duplicada.** Das 1.614 linhas, 812 são a mesma vaga extraída duas vezes (mesmo `job_id`) e outras 38 repetem o texto de outra vaga. Sobram **764 descrições únicas**.
 
-> **A Descoberta:** A análise da query revelou um 'cluster' (agrupamento) de vagas dominado pela empresa Turing, tanto no mercado de SP quanto no Remoto: 5 dos 6 primeiros resultados são vagas da Turing.
->
-> **A Causa:** Isso é evidenciado pelos scores de similaridade e ângulos idênticos (ex: 0.2691 / 74.39° nos documentos 1216 e 409 de SP, e 0.2383 / 76.22° nos documentos 1251 e 444 Remotos), provando que múltiplas vagas são, na verdade, cópias exatas do mesmo documento de texto.
->
-> **A Implicação (Ruído nos Dados):** Isso também expõe um 'ruído' nos dados: o uso de texto 'boilerplate' (o parágrafo de introdução da Turing) faz com que essas vagas pareçam muito similares entre si e dominem o topo do ranking.
->
-> **A Prova:** O algoritmo, no entanto, funciona como esperado. Outros resultados, como a vaga de 'Engenheiro de Dados Sênior' fora da Turing (documento 266, score 0.1828), provam que o sistema está corretamente ranqueando os documentos.
+**2. Sem limpar, as cópias dominam o topo.** Na primeira versão do trabalho, o ranking da query de exemplo trazia scores idênticos em posições seguidas (ex.: 0.2691 / 74.39° em duas vagas de SP). Eram cópias do mesmo texto. Medindo isso no código: sem a limpeza, das 10 primeiras posições, **5 seriam cópias em SP e 8 nas Remotas**.
+
+**3. Texto padrão ("boilerplate") ainda pesa.** Mesmo depois da limpeza, o top 3 remoto é todo de vagas da Turing, cujos anúncios começam com o mesmo parágrafo de apresentação. O TF-IDF não diferencia esse parágrafo do conteúdo da vaga.
+
+Resultado da query de exemplo (`data engineer with experience in python and sql`):
+
+| Grupo | Vagas únicas | Melhor similaridade | Ângulo |
+|---|---:|---:|---:|
+| São Paulo | 363 | 0.1863 | 79.26° |
+| Remotas | 86 | 0.3236 | 71.12° |
+
+### Limitações e próximos passos
+
+  * Quase-duplicatas (o mesmo anúncio com um cabeçalho diferente) não são removidas: o 2º e o 3º lugar de SP são a mesma vaga da Thomson Reuters. Dá para tratar com um limiar de similaridade entre as próprias vagas.
+  * Parte dos textos do CSV original já vem com caracteres corrompidos (`�`).
+  * `min_df=2` descarta palavras da query que não aparecem em pelo menos 2 documentos.
+  * A query precisa estar em inglês por causa das *stop words*, mas parte das vagas está em português.
+
+O arquivo `analise_dos_resultados.pdf` é a análise entregue na disciplina, feita sobre a primeira versão do script (antes da remoção de duplicatas).

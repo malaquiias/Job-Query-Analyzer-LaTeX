@@ -7,8 +7,6 @@
 %
 \usepackage[portuguese]{babel}%
 \usepackage[a4paper,margin=1in]{geometry}%
-\usepackage{lmodern}%
-\usepackage{verbatim}%
 \usepackage{hyperref}%
 \title{Relatório de Análise de Query {-} Vagas SP vs. Remoto}%
 \author{Análise de Álgebra Linear com TF{-}IDF}%
@@ -18,173 +16,51 @@
 \maketitle%
 \section{Descrição do Dataset}%
 \label{sec:DescriodoDataset}%
-A análise foi realizada utilizando um conjunto de dados público da plataforma Kaggle.\newline%
-%
-\\%
-\textbf{Arquivo:}%
- engenheiro\_de\_dados\_6k.csv 
-%
-\\%
-\textbf{Conteúdo:}%
- O dataset contém 1.614 vagas para a posição de Engenheiro de Dados (Data Engineer) no Brasil (LinkedIn, 2023). Para esta análise, os 'documentos' são os textos da coluna 'job\_description'.
+Dataset público do Kaggle com vagas de Engenheiro de Dados no Brasil (LinkedIn, 2023), arquivo \texttt{engenheiro\_de\_dados\_6k.csv}. Os documentos são os textos da coluna \texttt{job\_description}.\par%
+\subsection{Limpeza: vagas duplicadas}%
+\label{subsec:Limpezavagasduplicadas}%
+O arquivo tem 1614 linhas com descrição. 812 são a mesma vaga (mesmo \texttt{job\_id}) extraída mais de uma vez, e outras 38 são vagas diferentes com o texto idêntico. Depois de remover as duas, restam 764 descrições únicas, que são as usadas no ranking.\par
 
 %
-\section{Metodologia da Análise}%
-\label{sec:MetodologiadaAnlise}%
-O objetivo deste trabalho é comparar a aderência de dois mercados de trabalho (São Paulo e Remoto) a um perfil de vaga ideal, definido pelo usuário (a 'query').%
-\par%
-\subsection{Definição da Query e Documentos}%
-\label{subsec:DefiniodaQueryeDocumentos}%
-\textbf{A Query (Perfil Ideal):\newline%
-}%
-\\%
-O usuário forneceu o seguinte texto em inglês descrevendo seu perfil ideal:\newline%
-%
-\begin{it}%
-data engineer with experience in python and sql%
-\end{it}%
-\\ \par%
-\textbf{Os Documentos (Os Grupos):\newline%
-}%
-\\%
-Os documentos da base foram divididos em dois grupos:\newline%
-%
-\\%
-{-} %
-\textbf{Grupo 1 (São Paulo):}%
- 756 documentos.\newline%
-%
-\\%
-{-} %
-\textbf{Grupo 2 (Remotas):}%
- 180 documentos.\newline%
+\section{Metodologia}%
+\label{sec:Metodologia}%
+\textbf{Query (perfil ideal):} \textit{data engineer with experience in python and sql}\par\medskip%
+\textbf{Grupos:} São Paulo (363 vagas) e Remotas (86 vagas).\par\medskip%
+\textbf{TF-IDF:} a query e as vagas de cada grupo viram vetores com o peso de cada palavra. \textbf{Similaridade de cosseno:} mede o ângulo entre o vetor da query e o de cada vaga; ângulo de 0\textdegree{} (cosseno 1) seria um texto idêntico.\par
 
 %
-\subsection{Processamento (Álgebra Linear)}%
-\label{subsec:Processamento(lgebraLinear)}%
-1. %
-\textbf{TF{-}IDF:}%
- A Query e todos os Documentos de um grupo são transformados em vetores numéricos que representam a importância de cada palavra{-}chave.\newline%
-%
-\\%
-2. %
-\textbf{Similaridade de Cosseno (Análise de Ângulos):}%
- É calculada a similaridade (cosseno do ângulo) entre o vetor da Query e *cada um* dos vetores de documentos do grupo. Um ângulo de 0° (cosseno = 1) significa que a vaga é idêntica à query.
+\section{Resultados: top 3 de cada grupo}%
+\label{sec:Resultadostop3decadagrupo}%
+\subsection{Vagas em São Paulo}%
+\label{subsec:VagasemSoPaulo}%
+\textbf{1. Engenheiro De Dados Sênior} (GET ITALENT CONSULTORIA E SERVICOS EM INFORMATICA LTDA, linha 266 do CSV)\\%
+Similaridade: 0.1863 \quad Ângulo: 79.26\textdegree\\%
+\textit{Área De Atuação Informática / TI / TecnologiaLocalização: Diferencial São Paulo-SPAtribuições: Certificação Azure Fundamentals 900 Certificação Azure Data EngineerQue Iremos Avaliar Experiência com desenvolvimento de Data Lakes em Cloud; Conhecimento de plataformas Big Data em ambiente de nuvem e banco de dados tradicionais (e.g. Azure Cosmos DB); Experiência Azure Data Lake Storage; Azure...}\par\medskip%
+\textbf{2. Engenheiro de Dados Sênior} (empresa não informada, linha 249 do CSV)\\%
+Similaridade: 0.1490 \quad Ângulo: 81.43\textdegree\\%
+\textit{Data Engineer Você busca desenvolver sua carreira e atuar como Data Engineer em uma empresa líder no segmento de Tecnologia? Junte-se a nós! A Thomson Reuters combina a inteligência tecnologia e expertise humana para fornecer respostas confiáveis que ajudam os profissionais a tomar decisões confiantes e administrar melhor seus negócios. Nós os ajudamos a reinventar a maneira como os profission...}\par\medskip%
+\textbf{3. Engenheiro de Dados Sênior} (EMPREGARA, linha 203 do CSV)\\%
+Similaridade: 0.1374 \quad Ângulo: 82.10\textdegree\\%
+\textit{ENGENHEIRO DE DADOS SÊNIOR PAGE IS LOADED ENGENHEIRO DE DADOS SÊNIOR APPLY REMOTE TYPE REMOTE JOB: Hybrid locations BRA-São Paulo-Av Cardoso de Me time type Full time posted on Posted 3 Days Ago job requisition id JREQ164375 Data Engineer Você busca desenvolver sua carreira e atuar como Data Engineer em uma empresa líder no segmento de Tecnologia? Junte-se a nós! A Thomson Reuters combina a inteli...}\par\medskip
 
 %
-\section{Resultados da Análise Comparativa}%
-\label{sec:ResultadosdaAnliseComparativa}%
-A seguir, são apresentados os 3 documentos mais similares (menor ângulo) à Query, separados por cada grupo.%
-\subsection{Top 3 {-} Vagas em São Paulo}%
-\label{subsec:Top3{-}VagasemSoPaulo}%
-\textbf{Rank 1 (ID do Documento no CSV: 1216):}%
-\\%
-\textbf{Similaridade (S):}%
- 0.2691%
- | %
-\textbf{Ângulo (Graus):}%
- 74.39°\newline%
-%
-\\ \par%
-\textbf{   Trecho do Documento:\newline%
-}%
-\\ \begin{it}%
-Na Turing ajudamos desenvolvedores a construírem a carreira de seus sonhos e encontrar as melhores vagas de trabalho online com salário em dólar em empresas de tecnologia dos EUA. Mais de 400 empresas incluindo Johnson \& Johnson Dell Disney Volvo etc. já contrataram desenvolvedores com a Turing. A U.S.-based organization that is committed to offering excellent healthcare research and m...%
-\end{it} \par%
-\textbf{Rank 2 (ID do Documento no CSV: 409):}%
-\\%
-\textbf{Similaridade (S):}%
- 0.2691%
- | %
-\textbf{Ângulo (Graus):}%
- 74.39°\newline%
-%
-\\ \par%
-\textbf{   Trecho do Documento:\newline%
-}%
-\\ \begin{it}%
-Na Turing ajudamos desenvolvedores a construírem a carreira de seus sonhos e encontrar as melhores vagas de trabalho online com salário em dólar em empresas de tecnologia dos EUA. Mais de 400 empresas incluindo Johnson \& Johnson Dell Disney Volvo etc. já contrataram desenvolvedores com a Turing. A U.S.-based organization that is committed to offering excellent healthcare research and m...%
-\end{it} \par%
-\textbf{Rank 3 (ID do Documento no CSV: 266):}%
-\\%
-\textbf{Similaridade (S):}%
- 0.1828%
- | %
-\textbf{Ângulo (Graus):}%
- 79.47°\newline%
-%
-\\ \par%
-\textbf{   Trecho do Documento:\newline%
-}%
-\\ \begin{it}%
-Área De Atuação Informática / TI / TecnologiaLocalização: Diferencial São Paulo-SPAtribuições: Certificação Azure Fundamentals 900 Certificação Azure Data EngineerQue Iremos Avaliar Experiência com desenvolvimento de Data Lakes em Cloud; Conhecimento de plataformas Big Data em ambiente de nuvem e banco de dados tradicionais (e.g. Azure Cosmos DB); Experiência Azure Data Lake Storage; Azure...%
-\end{it} \par
+\subsection{Vagas Remotas}%
+\label{subsec:VagasRemotas}%
+\textbf{1. Engenheiro de Dados Clínicos} (empresa não informada, linha 311 do CSV)\\%
+Similaridade: 0.3236 \quad Ângulo: 71.12\textdegree\\%
+\textit{Na Turing ajudamos desenvolvedores a construírem a carreira de seus sonhos e encontrar as melhores vagas de trabalho online com salário em dólar em empresas de tecnologia dos EUA. Mais de 400 empresas incluindo Johnson \& Johnson Dell Disney Volvo etc. já contrataram desenvolvedores com a Turing. A U.S.-based organization that is committed to offering excellent healthcare research and m...}\par\medskip%
+\textbf{2. Engenheiro de Dados} (empresa não informada, linha 444 do CSV)\\%
+Similaridade: 0.3144 \quad Ângulo: 71.67\textdegree\\%
+\textit{Na Turing ajudamos desenvolvedores a construírem a carreira de seus sonhos e encontrar as melhores vagas de trabalho online com salário em dólar em empresas de tecnologia dos EUA. Mais de 400 empresas incluindo Johnson \& Johnson Dell Disney Volvo etc. já contrataram desenvolvedores com a Turing. A fast-growing company that is developing a global platform to invest consistently in cutting...}\par\medskip%
+\textbf{3. Engenheiro de Dados} (empresa não informada, linha 456 do CSV)\\%
+Similaridade: 0.2308 \quad Ângulo: 76.66\textdegree\\%
+\textit{Na Turing ajudamos desenvolvedores a construírem a carreira de seus sonhos e encontrar as melhores vagas de trabalho online com salário em dólar em empresas de tecnologia dos EUA. Mais de 400 empresas incluindo Johnson \& Johnson Dell Disney Volvo etc. já contrataram desenvolvedores com a Turing. A rapidly-growing company that is building AI technology to help students understand texts an...}\par\medskip
 
 %
-\subsection{Top 3 {-} Vagas Remotas}%
-\label{subsec:Top3{-}VagasRemotas}%
-\textbf{Rank 1 (ID do Documento no CSV: 1251):}%
-\\%
-\textbf{Similaridade (S):}%
- 0.2383%
- | %
-\textbf{Ângulo (Graus):}%
- 76.22°\newline%
-%
-\\ \par%
-\textbf{   Trecho do Documento:\newline%
-}%
-\\ \begin{it}%
-Na Turing ajudamos desenvolvedores a construírem a carreira de seus sonhos e encontrar as melhores vagas de trabalho online com salário em dólar em empresas de tecnologia dos EUA. Mais de 400 empresas incluindo Johnson \& Johnson Dell Disney Volvo etc. já contrataram desenvolvedores com a Turing. A fast-growing company that is developing a global platform to invest consistently in cutting...%
-\end{it} \par%
-\textbf{Rank 2 (ID do Documento no CSV: 444):}%
-\\%
-\textbf{Similaridade (S):}%
- 0.2383%
- | %
-\textbf{Ângulo (Graus):}%
- 76.22°\newline%
-%
-\\ \par%
-\textbf{   Trecho do Documento:\newline%
-}%
-\\ \begin{it}%
-Na Turing ajudamos desenvolvedores a construírem a carreira de seus sonhos e encontrar as melhores vagas de trabalho online com salário em dólar em empresas de tecnologia dos EUA. Mais de 400 empresas incluindo Johnson \& Johnson Dell Disney Volvo etc. já contrataram desenvolvedores com a Turing. A fast-growing company that is developing a global platform to invest consistently in cutting...%
-\end{it} \par%
-\textbf{Rank 3 (ID do Documento no CSV: 311):}%
-\\%
-\textbf{Similaridade (S):}%
- 0.2368%
- | %
-\textbf{Ângulo (Graus):}%
- 76.30°\newline%
-%
-\\ \par%
-\textbf{   Trecho do Documento:\newline%
-}%
-\\ \begin{it}%
-Na Turing ajudamos desenvolvedores a construírem a carreira de seus sonhos e encontrar as melhores vagas de trabalho online com salário em dólar em empresas de tecnologia dos EUA. Mais de 400 empresas incluindo Johnson \& Johnson Dell Disney Volvo etc. já contrataram desenvolvedores com a Turing. A U.S.-based organization that is committed to offering excellent healthcare research and m...%
-\end{it} \par
-
-%
-\section{Discussão dos Resultados}%
-\label{sec:DiscussodosResultados}%
-\textbf{A Descoberta: }%
-A análise da query revelou um 'cluster' (agrupamento) de vagas dominado pela empresa Turing, tanto no mercado de SP quanto no Remoto.%
-\par%
-\textbf{A Causa: }%
-Isso é evidenciado pelos scores de similaridade e ângulos idênticos (ex: 0.2691 / 74.39%
-°%
- nos documentos 1216 e 409 de SP, e 0.2383 / 76.22%
-°%
- nos documentos 1251 e 444 Remotos), provando que múltiplas vagas são, na verdade, cópias exatas do mesmo documento de texto.%
-\par%
-\textbf{A Implicação (Ruído nos Dados): }%
-Isso também expõe um 'ruído' nos dados: o uso de texto 'boilerplate' (o parágrafo de introdução da Turing) faz com que essas vagas pareçam muito similares entre si e dominem o topo do ranking.%
-\par%
-\textbf{A Prova: }%
-O algoritmo, no entanto, funciona como esperado. Outros resultados, como a vaga de 'Engenheiro de Dados Sênior' fora da Turing (documento 266, score 0.1828), provam que o sistema está corretamente ranqueando os documentos, mas que as vagas da Turing são matematicamente mais similares à query.%
-\par
+\section{Discussão}%
+\label{sec:Discusso}%
+Para esta query, a vaga mais aderente está no grupo \textbf{Remotas} (similaridade 0.3236, contra 0.1863 no outro grupo).\par\medskip%
+\textbf{Efeito das duplicatas:} sem a limpeza, das 10 primeiras posições 5 seriam cópias de outra vaga em São Paulo e 8 nas Remotas. Cópias têm exatamente o mesmo score, então ocupam o topo do ranking sem trazer informação nova.\par
 
 %
 \end{document}
